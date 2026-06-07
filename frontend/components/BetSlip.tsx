@@ -71,7 +71,7 @@ export default function BetSlip({ selection, stale, onClose, onPlaced }: BetSlip
       }
       setBankroll(data.bankroll);
       setPlaced(true);
-      onPlaced?.();
+      onPlaced?.(); // refresh the live bets panel + lock state immediately
     } catch {
       setError("Network error placing bet");
     } finally {

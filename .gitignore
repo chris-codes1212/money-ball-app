@@ -11,7 +11,7 @@
 __pycache__/
 *.py[cod]
 *.egg-info/
-.venv/
+.venv*/
 venv/
 # W&B model artifacts downloaded at runtime
 backend/artifacts/

@@ -1,4 +1,6 @@
 import MatchupCard from "@/components/matchupCard";
+import GameBets from "@/components/GameBets";
+import { GameBetsProvider } from "@/components/GameBetsProvider";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 
@@ -19,7 +21,10 @@ export default async function GamePage({ params }: { params: Promise<{ game_id: 
         
         <div className="min-h-screen flex items-center justify-center px-4">
             <div className="w-full max-w-3xl">
-                <MatchupCard params={{ game_id: resolvedParams.game_id }} />
+                <GameBetsProvider gameId={Number(resolvedParams.game_id)}>
+                    <MatchupCard params={{ game_id: resolvedParams.game_id }} />
+                    <GameBets />
+                </GameBetsProvider>
             </div>
         </div>
     )

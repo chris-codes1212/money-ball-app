@@ -1,9 +1,18 @@
 import os
+import sys
 import re
 import pickle
 import joblib
 import wandb
 import pandas as pd
+
+# The production model was pickled with its custom transformers referenced both
+# as `src.transformers` and as a bare top-level `transformers` (training ran from
+# inside the src/ directory). Put src/ on sys.path so both import paths resolve
+# when joblib unpickles the pipeline.
+_SRC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "src")
+if _SRC_DIR not in sys.path:
+    sys.path.insert(0, _SRC_DIR)
 
 
 def load_production_model(

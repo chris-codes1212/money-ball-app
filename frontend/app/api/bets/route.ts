@@ -3,50 +3,11 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/lib/generated/prisma/client";
 import {
   MIN_STAKE,
-  OUTCOME_TO_WIRE,
   isOfferedOdds,
   potentialPayout,
   toPitchOutcome,
 } from "@/lib/betting";
-
-// Bankroll/stake are Decimal in the DB; serialize them as fixed-2 strings so the
-// client never receives a float it has to round.
-function serializeBet(bet: {
-  id: string;
-  gameId: number;
-  selectedOutcome: string;
-  stake: Prisma.Decimal;
-  oddsAmerican: number;
-  potentialPayout: Prisma.Decimal;
-  status: string;
-  pitchSeq: number;
-  atBatIndex: number;
-  balls: number;
-  strikes: number;
-  settledOutcome: string | null;
-  settledAt: Date | null;
-  createdAt: Date;
-}) {
-  return {
-    id: bet.id,
-    gameId: bet.gameId,
-    selectedOutcome: bet.selectedOutcome,
-    selectedOutcomeLabel:
-      OUTCOME_TO_WIRE[bet.selectedOutcome as keyof typeof OUTCOME_TO_WIRE] ??
-      bet.selectedOutcome,
-    stake: bet.stake.toFixed(2),
-    oddsAmerican: bet.oddsAmerican,
-    potentialPayout: bet.potentialPayout.toFixed(2),
-    status: bet.status,
-    pitchSeq: bet.pitchSeq,
-    atBatIndex: bet.atBatIndex,
-    balls: bet.balls,
-    strikes: bet.strikes,
-    settledOutcome: bet.settledOutcome,
-    settledAt: bet.settledAt?.toISOString() ?? null,
-    createdAt: bet.createdAt.toISOString(),
-  };
-}
+import { serializeBet } from "@/lib/betSerializer";
 
 function isNonNegativeInt(v: unknown): v is number {
   return typeof v === "number" && Number.isInteger(v) && v >= 0;
@@ -135,6 +96,13 @@ export async function POST(request: Request) {
 
     // --- atomic debit + create -------------------------------------------
     const bet = await prisma.$transaction(async (tx) => {
+      // One live bet per game: lock out new bets while one is still pending.
+      const existingPending = await tx.bet.findFirst({
+        where: { userId, gameId, status: "PENDING" },
+        select: { id: true },
+      });
+      if (existingPending) throw new GameLockedError();
+
       // Atomic, race-safe debit: only succeeds if the bankroll still covers it.
       const debit = await tx.user.updateMany({
         where: { id: userId, bankroll: { gte: stakeDec } },
@@ -169,6 +137,12 @@ export async function POST(request: Request) {
       { status: 201 },
     );
   } catch (error) {
+    if (error instanceof GameLockedError) {
+      return Response.json(
+        { error: "You already have a pending bet on this game. Wait for it to settle." },
+        { status: 409 },
+      );
+    }
     if (error instanceof InsufficientFundsError) {
       return Response.json({ error: "Insufficient bankroll" }, { status: 402 });
     }
@@ -199,3 +173,4 @@ export async function GET() {
 }
 
 class InsufficientFundsError extends Error {}
+class GameLockedError extends Error {}

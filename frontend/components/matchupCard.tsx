@@ -7,6 +7,7 @@ import { getPlayerHeadshotUrl } from "@/lib/mlb";
 import OddsButton from "@/components/oddsButton";
 import BaseOccupancy from "@/components/baseOccupancy";
 import BetSlip, { type BetSelection } from "@/components/BetSlip";
+import { useGameBets } from "@/components/GameBetsProvider";
 
 type GameData = {
 
@@ -59,6 +60,9 @@ export default function MatchupCard({ params }: { params: { game_id: string } })
   // The pitch snapshot the user is currently building a bet on (null = no slip open).
   const [selection, setSelection] = useState<BetSelection | null>(null);
 
+  // Betting is locked while the user has an unsettled bet on this game.
+  const { locked, refresh } = useGameBets();
+
   useEffect(() => {
     const ws = new WebSocket(`ws://localhost:8000/ws/${params.game_id}`);
 
@@ -81,7 +85,7 @@ export default function MatchupCard({ params }: { params: { game_id: string } })
     gameContext.pitch_seq !== selection.pitchSeq;
 
   function handleSelect(outcome: string, oddsValue: number) {
-    if (!gameContext) return;
+    if (!gameContext || locked) return; // can't open a new bet while one is pending
     setSelection({
       outcome,
       odds: oddsValue,
@@ -181,20 +185,32 @@ export default function MatchupCard({ params }: { params: { game_id: string } })
 
       {odds ? (
         <div className="mt-6 flex flex-wrap justify-center gap-4">
-          <OddsButton outcome="strike" odds={odds.strike} selected={selection?.outcome === "strike"} onSelect={handleSelect} />
-          <OddsButton outcome="ball" odds={odds.ball} selected={selection?.outcome === "ball"} onSelect={handleSelect} />
-          <OddsButton outcome="hit" odds={odds.hit} selected={selection?.outcome === "hit"} onSelect={handleSelect} />
-          <OddsButton outcome="non-strike foul" odds={odds["non-strike foul"]} selected={selection?.outcome === "non-strike foul"} onSelect={handleSelect} />
+          <OddsButton outcome="strike" odds={odds.strike} selected={selection?.outcome === "strike"} locked={locked} onSelect={handleSelect} />
+          <OddsButton outcome="ball" odds={odds.ball} selected={selection?.outcome === "ball"} locked={locked} onSelect={handleSelect} />
+          <OddsButton outcome="hit" odds={odds.hit} selected={selection?.outcome === "hit"} locked={locked} onSelect={handleSelect} />
+          <OddsButton outcome="non-strike foul" odds={odds["non-strike foul"]} selected={selection?.outcome === "non-strike foul"} locked={locked} onSelect={handleSelect} />
         </div>
       ) : (
         <div className="mt-6 text-center text-white/60">Waiting for odds...</div>
       )}
 
-      {selection && (
+      {/* While a bet is pending, betting is locked until it settles. */}
+      {locked && (
+        <div className="mt-4 rounded-lg bg-yellow-600/15 px-4 py-2 text-center text-sm text-yellow-300">
+          🔒 Betting locked until your current bet settles.
+        </div>
+      )}
+
+      {selection && !locked && (
         <BetSlip
           selection={selection}
           stale={selectionStale}
           onClose={() => setSelection(null)}
+          onPlaced={() => {
+            // Close the slip and refresh so the lock + bets panel update at once.
+            setSelection(null);
+            refresh();
+          }}
         />
       )}
     </div>

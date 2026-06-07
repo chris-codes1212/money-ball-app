@@ -6,6 +6,7 @@ from fastapi.concurrency import asynccontextmanager
 from fastapi.responses import HTMLResponse
 from scheduler import register_game, scheduler, unregister_game
 import live_games_utils
+import settlement
 import utils
 import stats
 from odds import get_pitch_odds
@@ -103,3 +104,10 @@ async def websocket_endpoint(websocket: WebSocket, game_id: int):
 def get_live_games():
     live_games = live_games_utils.get_today_games()
     return {"live_games": live_games}
+
+
+@app.get("/games/{game_id}/pitch_results")
+def get_pitch_results(game_id: int):
+    # Authoritative, graded pitch results used by the settlement service to
+    # grade PENDING bets. Read-only MLB data, so it's safe to expose.
+    return settlement.get_pitch_results(game_id)
