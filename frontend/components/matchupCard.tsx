@@ -101,15 +101,15 @@ export default function MatchupCard({ params }: { params: { game_id: string } })
   }
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-slate-800/90 px-8 py-6 shadow-lg">
+    <div className="rounded-2xl border border-white/10 bg-slate-800/90 px-4 py-5 shadow-lg md:px-8 md:py-6">
       {gameContext ? (
-        <div className="grid grid-cols-3 items-start justify-items-center gap-x-6 gap-y-4">
+        <div className="grid grid-cols-3 items-start justify-items-center gap-x-2 gap-y-3 md:gap-x-6 md:gap-y-4">
           {/* Header */}
-          <div className="text-sm font-semibold uppercase tracking-wide text-white/70">
+          <div className="text-xs font-semibold uppercase tracking-wide text-white/70 md:text-sm">
             Pitcher
           </div>
           <div />
-          <div className="text-sm font-semibold uppercase tracking-wide text-white/70">
+          <div className="text-xs font-semibold uppercase tracking-wide text-white/70 md:text-sm">
             Batter
           </div>
 
@@ -118,36 +118,38 @@ export default function MatchupCard({ params }: { params: { game_id: string } })
             <img
               src={getPlayerHeadshotUrl(gameContext.pitcher_id, 60)}
               alt={gameContext.pitcher_name}
-              className="rounded-full"
+              className="h-12 w-12 rounded-full md:h-[60px] md:w-[60px]"
             />
-            <div className="font-medium text-white">{gameContext.pitcher_name}</div>
+            <div className="text-sm font-medium leading-tight text-white md:text-base">{gameContext.pitcher_name}</div>
           </div>
 
-          <div className="self-center text-lg font-bold text-white/70">vs.</div>
+          <div className="self-center text-base font-bold text-white/70 md:text-lg">vs.</div>
 
           <div className="flex flex-col items-center gap-2 text-center">
             <img
               src={getPlayerHeadshotUrl(gameContext.batter_id, 60)}
               alt={gameContext.batter_name}
-              className="rounded-full"
+              className="h-12 w-12 rounded-full md:h-[60px] md:w-[60px]"
             />
-            <div className="font-medium text-white">{gameContext.batter_name}</div>
+            <div className="text-sm font-medium leading-tight text-white md:text-base">{gameContext.batter_name}</div>
           </div>
 
           {/* pitcher Stats */}
-          <div className="mt-4 flex flex-col items-center gap-2">
-            <div className="rounded-full bg-white/10 px-4 py-1 text-sm font-semibold text-white">
+          <div className="mt-3 flex flex-col items-center gap-1.5 md:mt-4 md:gap-2">
+            <div className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-white md:px-4 md:py-1 md:text-sm">
               Strike Rate: {(playerStats?.pitcher.strike_rate ?? 0)}%
             </div>
-            <div className="rounded-full bg-white/10 px-4 py-1 text-sm font-semibold text-white">
+            <div className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-white md:px-4 md:py-1 md:text-sm">
               Ball Rate: {(playerStats?.pitcher.ball_rate ?? 0)}%
             </div>
-            <div className="rounded-full bg-white/10 px-4 py-1 text-sm font-semibold text-white">
+            <div className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-white md:px-4 md:py-1 md:text-sm">
               Hit Rate: {(playerStats?.pitcher.hit_rate ?? 0)}%
             </div>
           </div>
 
-          <div>
+          {/* SVG has a viewBox, so CSS width/height scale it: smaller on mobile,
+              full 150px on md+ (laptop/iPad unchanged). */}
+          <div className="[&_svg]:h-24 [&_svg]:w-24 md:[&_svg]:h-[150px] md:[&_svg]:w-[150px]">
             <BaseOccupancy
               first={baseOccupancy?.first ?? false}
               second={baseOccupancy?.second ?? false}
@@ -157,14 +159,14 @@ export default function MatchupCard({ params }: { params: { game_id: string } })
           </div>
 
           {/* batter Stats */}
-          <div className="mt-4 flex flex-col items-center gap-2">
-            <div className="rounded-full bg-white/10 px-4 py-1 text-sm font-semibold text-white">
+          <div className="mt-3 flex flex-col items-center gap-1.5 md:mt-4 md:gap-2">
+            <div className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-white md:px-4 md:py-1 md:text-sm">
               Strike Rate: {(playerStats?.batter.strike_rate ?? 0)}%
             </div>
-            <div className="rounded-full bg-white/10 px-4 py-1 text-sm font-semibold text-white">
+            <div className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-white md:px-4 md:py-1 md:text-sm">
               Ball Rate: {(playerStats?.batter.ball_rate ?? 0)}%
             </div>
-            <div className="rounded-full bg-white/10 px-4 py-1 text-sm font-semibold text-white">
+            <div className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-white md:px-4 md:py-1 md:text-sm">
               Hit Rate: {(playerStats?.batter.hit_rate ?? 0)}%
             </div>
           </div>
@@ -172,11 +174,11 @@ export default function MatchupCard({ params }: { params: { game_id: string } })
 
           {/* Metadata */}
           <div />
-          <div className="mt-4 flex flex-col items-center gap-2">
-            <div className="rounded-full bg-white/10 px-4 py-1 text-sm font-semibold text-white">
+          <div className="mt-3 flex flex-col items-center gap-1.5 md:mt-4 md:gap-2">
+            <div className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-white md:px-4 md:py-1 md:text-sm">
               Count: {gameContext.balls}-{gameContext.strikes}
             </div>
-            <div className="rounded-full bg-white/10 px-4 py-1 text-sm font-semibold text-white">
+            <div className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-white md:px-4 md:py-1 md:text-sm">
               Outs: {gameContext.outs}
             </div>
           </div>
@@ -187,7 +189,7 @@ export default function MatchupCard({ params }: { params: { game_id: string } })
       )}
 
       {odds ? (
-        <div className="mt-6 flex flex-wrap justify-center gap-4">
+        <div className="mt-6 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-center sm:gap-4">
           <OddsButton outcome="strike" odds={odds.strike} selected={selection?.outcome === "strike"} locked={locked} onSelect={handleSelect} />
           <OddsButton outcome="ball" odds={odds.ball} selected={selection?.outcome === "ball"} locked={locked} onSelect={handleSelect} />
           <OddsButton outcome="hit" odds={odds.hit} selected={selection?.outcome === "hit"} locked={locked} onSelect={handleSelect} />

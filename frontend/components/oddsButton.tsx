@@ -19,7 +19,7 @@ export default function OddsButton({ outcome, odds, selected, locked, onSelect }
       disabled={!clickable}
       onClick={() => clickable && onSelect?.(outcome, odds)}
       className={[
-        "group flex flex-col items-center rounded px-4 pt-2 pb-2 font-bold text-white transition",
+        "group flex w-full flex-col items-center rounded px-4 pt-2 pb-2 font-bold text-white transition sm:w-auto",
         clickable
           ? "cursor-pointer bg-gray-700 hover:bg-green-600"
           : "cursor-not-allowed bg-gray-800 text-white/40",
