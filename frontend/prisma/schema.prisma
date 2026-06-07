@@ -1,0 +1,113 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+
+  passwordHash  String?
+  username      String?   @unique
+  // Money is stored as a fixed-precision decimal, never a float, to avoid
+  // rounding drift on a ledger. 1000.00 starting "fake" bankroll.
+  bankroll      Decimal   @default(1000) @db.Decimal(14, 2)
+
+  accounts      Account[]
+  sessions      Session[]
+  bets          Bet[]
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@id([identifier, token])
+}
+
+// The outcome a user can bet on for a single pitch. These mirror the labels the
+// FastAPI backend streams over the websocket; the API layer maps the wire label
+// "non-strike foul" <-> NON_STRIKE_FOUL.
+enum PitchOutcome {
+  STRIKE
+  BALL
+  HIT
+  NON_STRIKE_FOUL
+}
+
+enum BetStatus {
+  PENDING // stake debited, awaiting the pitch result
+  WON     // pitch matched the selection, payout credited
+  LOST    // pitch did not match the selection
+  VOID    // refunded (e.g. game/at-bat ended without a gradable pitch)
+}
+
+// A single fake bet on the outcome of one pitch. The stake is debited from the
+// user's bankroll the moment the bet is created (status PENDING); settlement
+// (a later sub-step) flips status to WON/LOST/VOID and credits any payout.
+model Bet {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  gameId         Int          // MLB gamePk
+  selectedOutcome PitchOutcome
+  stake          Decimal      @db.Decimal(14, 2)
+  // Signed American odds locked in at placement time (e.g. -150, +130).
+  oddsAmerican   Int
+  // Total amount returned to the bankroll on a win = stake + profit.
+  potentialPayout Decimal     @db.Decimal(14, 2)
+
+  status BetStatus @default(PENDING)
+
+  // Pitch binding — identifies exactly which pitch this bet is graded against,
+  // so settlement can match the bet to the authoritative pitch result.
+  pitchSeq    Int // monotonic per-game pitch sequence from the backend
+  atBatIndex  Int
+  balls       Int
+  strikes     Int
+
+  // Populated at settlement.
+  settledOutcome PitchOutcome?
+  settledAt      DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([gameId, pitchSeq])
+  @@index([status])
+}

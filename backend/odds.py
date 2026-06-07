@@ -47,19 +47,36 @@ def probs_with_vig(probs):
     adjusted_probs = {k: (v / total_prob) * vig_factor for k, v in probs.items()}
     return adjusted_probs
 
+def prob_to_american(p):
+    """Convert an implied probability into signed American (moneyline) odds.
+
+    Convention:
+      - favorite  (p > 0.5): negative odds, e.g. p=0.75 -> -300
+      - underdog  (p < 0.5): positive odds, e.g. p=0.25 -> +300
+      - even      (p = 0.5): +100
+    Returns 0 to mean "not offered" for degenerate probabilities (<=0 or >=1).
+    """
+    if p <= 0 or p >= 1:
+        return 0  # 0 is the "not offered" sentinel the frontend disables on
+    if p > 0.5:
+        return -int(round(100 * p / (1 - p)))      # favorite -> negative
+    return int(round(100 * (1 - p) / p))           # underdog -> positive
+
+
 def get_pitch_odds(play_data, model=None, labels=None):
     probs = get_pitch_probs(play_data, model, labels)
     vig_probs = probs_with_vig(probs)
-    
+
+    # A terminal count (the at-bat is effectively decided) has no gradable
+    # "next pitch" of this kind, so nothing is offered. 0 == not offered.
     if play_data['count']['strikes'] == 3 or play_data['count']['balls'] == 4:
-        odds = {k: 0.0 for k in vig_probs.keys()}  # If the count is already at 3 strikes or 4 balls, the odds are not applicable
-    
-    else:
-    
-        odds = {k: int(100*v / (1 - v)) if v > 0.5 else int(100*(1-v) / v) for k, v in vig_probs.items()} 
-    
-        if play_data['count']['strikes'] < 2:
-            odds['non-strike foul'] = 0.0  # Assign a 0 probability to non-strike fouls when there are less than 2 strikes
-    
- # Convert probabilities to odds
+        return {k: 0 for k in vig_probs.keys()}
+
+    odds = {k: prob_to_american(v) for k, v in vig_probs.items()}
+
+    # "non-strike foul" only exists as a distinct outcome with 2 strikes: with
+    # fewer than 2 strikes a foul simply adds a strike, so it isn't offered.
+    if play_data['count']['strikes'] < 2:
+        odds['non-strike foul'] = 0
+
     return odds

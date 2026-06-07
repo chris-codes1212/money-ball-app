@@ -1,6 +1,18 @@
 import utils
 
+# Shape returned when no model is loaded — keeps the websocket payload valid so
+# the frontend renders (it already treats missing rates as 0).
+_PLACEHOLDER_STATS = {
+    "batter": {"strike_rate": 0.0, "ball_rate": 0.0, "hit_rate": 0.0},
+    "pitcher": {"strike_rate": 0.0, "ball_rate": 0.0, "hit_rate": 0.0},
+}
+
 def get_player_stats(pipeline, play_data):
+        # Without a trained pipeline we can't compute engineered rates; fall back
+        # to placeholders instead of crashing the pitch broadcast.
+        if pipeline is None:
+            return _PLACEHOLDER_STATS
+
         df = utils.preprocess_play_data(play_data)  # You would need to implement this function based on your model's expected input
         feature_eng = pipeline.named_steps["feature_engineering"]
         X_features = feature_eng.transform(df)

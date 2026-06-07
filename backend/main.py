@@ -1,5 +1,6 @@
 import logging
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.concurrency import asynccontextmanager
 from fastapi.responses import HTMLResponse
@@ -12,6 +13,10 @@ from odds import get_pitch_odds
 
 from ws_manager import manager
 
+# Load backend/.env (W&B key, etc.) for local runs. In containers the env is
+# injected directly, so this is a no-op there.
+load_dotenv()
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     scheduler.start()
@@ -21,7 +26,9 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-# Try and load model pipeline
+# Try to load the model pipeline. If anything goes wrong (missing artifact,
+# W&B auth/network failure, etc.) we degrade gracefully to placeholder odds
+# rather than crashing startup — get_pitch_odds handles model=None.
 try:
     ENTITY = 'chris-r-thompson1212-university-of-denver'
     PROJECT = "money-ball"
@@ -30,14 +37,22 @@ try:
         PROJECT,
     )
     print("Model Loaded Successfully")
-except FileNotFoundError:
-    logging.error("Model not loaded. File not found.")
+except Exception as e:
+    logging.error(f"Model not loaded ({type(e).__name__}: {e}). Falling back to placeholder odds.")
     model = None
     labels = None
 
+# Monotonic per-game pitch sequence. Lets the frontend/ledger bind a bet to the
+# exact pitch state it was placed on, so settlement can match bet -> result.
+_pitch_seq: dict[int, int] = {}
+
+
 async def on_new_pitch(game_id: int, data):
-    
-    pitch_odds = get_pitch_odds(data, model, labels) 
+
+    seq = _pitch_seq.get(game_id, 0) + 1
+    _pitch_seq[game_id] = seq
+
+    pitch_odds = get_pitch_odds(data, model, labels)
     player_stats = stats.get_player_stats(model, data)  # Placeholder function to calculate player stats based on the current play data, replace with actual implementation
     base_occupancy = {
         "first": data['matchup'].get('postOnFirst') is not None,
@@ -48,6 +63,8 @@ async def on_new_pitch(game_id: int, data):
     payload = {
         "game_context": {
         "game_id": game_id,
+        "pitch_seq": seq,
+        "at_bat_index": data['atBatIndex'],
         "batter_name": data['matchup']['batter']['fullName'],
         "pitcher_name": data['matchup']['pitcher']['fullName'],
         "batter_id": data['matchup']['batter']['id'],

@@ -1,0 +1,30 @@
+# Local development database.
+#
+# Credentials/db name match the DATABASE_URL in frontend/.env(.local):
+#   postgresql://postgres:postgres@host.docker.internal:5432/appdb
+#
+# The full application services (frontend, backend) are added in Phase 2, where
+# containerization is the focus. For now this just provides a reproducible
+# Postgres so migrations and local runs work out of the box:
+#   docker compose up -d db
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: moneyball-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: appdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - moneyball-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d appdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  moneyball-pgdata:
