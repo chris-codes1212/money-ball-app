@@ -76,8 +76,11 @@ export class AppStack extends cdk.Stack {
       DB_PASSWORD: ecs.Secret.fromSecretsManager(dbSecret, "password"),
       DB_NAME: ecs.Secret.fromSecretsManager(dbSecret, "dbname"),
     };
+    // RDS enforces SSL (rds.force_ssl=1). The pg driver adapter doesn't enable
+    // TLS by default, so request it via sslmode=no-verify (encrypt; don't verify
+    // the RDS CA — avoids bundling the cert for this faux app).
     const composeDatabaseUrl =
-      'export DATABASE_URL="postgresql://$DB_USER:$DB_PASSWORD@$DB_HOST:$DB_PORT/$DB_NAME"';
+      'export DATABASE_URL="postgresql://$DB_USER:$DB_PASSWORD@$DB_HOST:$DB_PORT/$DB_NAME?sslmode=no-verify"';
 
     // --- Container images (built in AWS by the BuildStack's CodeBuild) ------
     // Imported by name; CodeBuild pushes them to these repos. fromEcrRepository
