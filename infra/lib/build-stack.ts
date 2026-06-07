@@ -49,6 +49,7 @@ export class BuildStack extends cdk.Stack {
       source: codebuild.Source.s3({ bucket: this.sourceBucket, path: "source.zip" }),
       environment: {
         buildImage: codebuild.LinuxBuildImage.STANDARD_7_0,
+        computeType: codebuild.ComputeType.LARGE, // headroom for next build + large images
         privileged: true, // needed to run Docker builds
       },
       environmentVariables: {
