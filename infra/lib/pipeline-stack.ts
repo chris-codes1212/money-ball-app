@@ -158,23 +158,41 @@ echo "migration exit code: $EXIT"
       variablesNamespace: "BuildVars",
     });
 
+    // triggerOnPush is disabled here so the pipeline-level trigger below (with
+    // path filters) is what decides when to run.
+    const sourceAction = new cpactions.CodeStarConnectionsSourceAction({
+      actionName: "GitHub",
+      owner,
+      repo,
+      branch,
+      connectionArn,
+      output: sourceOutput,
+      triggerOnPush: false,
+    });
+
     new codepipeline.Pipeline(this, "Pipeline", {
       pipelineName: "money-ball-pipeline",
       pipelineType: codepipeline.PipelineType.V2,
+      // Only deploy when app/infra code changes — skip docs/config-only pushes
+      // (a README tweak shouldn't rebuild images and roll ECS).
+      triggers: [
+        {
+          providerType: codepipeline.ProviderType.CODE_STAR_SOURCE_CONNECTION,
+          gitConfiguration: {
+            sourceAction,
+            pushFilter: [
+              {
+                branchesIncludes: [branch],
+                filePathsExcludes: ["*.md", "**/*.md", ".gitignore", "LICENSE", "docs/**"],
+              },
+            ],
+          },
+        },
+      ],
       stages: [
         {
           stageName: "Source",
-          actions: [
-            new cpactions.CodeStarConnectionsSourceAction({
-              actionName: "GitHub",
-              owner,
-              repo,
-              branch,
-              connectionArn,
-              output: sourceOutput,
-              triggerOnPush: true,
-            }),
-          ],
+          actions: [sourceAction],
         },
         { stageName: "Build", actions: [buildAction] },
         {
