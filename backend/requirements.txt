@@ -6,6 +6,7 @@ uvicorn[standard]
 apscheduler
 MLB-StatsAPI==1.9.0
 python-dotenv
+tzdata          # zoneinfo timezone database (slim images don't ship it)
 wandb
 joblib
 pandas

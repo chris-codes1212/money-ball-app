@@ -37,6 +37,8 @@ services:
       # Needed to load the production model; without it the app serves
       # placeholder odds (see backend/main.py).
       WANDB_API_KEY: ${WANDB_API_KEY:-}
+      # Timezone used to compute "today's games" (containers run on UTC).
+      APP_TIMEZONE: ${APP_TIMEZONE:-America/New_York}
     ports:
       - "8000:8000" # published so the browser can open the WebSocket
     healthcheck:
