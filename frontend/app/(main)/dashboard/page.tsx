@@ -43,7 +43,7 @@ export default async function Dashboard() {
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-white">
-              {user.username ? `${user.username}'s` : "Your"} Dashboard
+              {user.username ? `${user.username}'s` : "Your"} Bets
             </h1>
             <p className="text-white/70">
               Bankroll{" "}
