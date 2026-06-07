@@ -120,7 +120,7 @@ export default function MatchupCard({ params }: { params: { game_id: string } })
             <img
               src={getPlayerHeadshotUrl(gameContext.pitcher_id, 60)}
               alt={gameContext.pitcher_name}
-              className="h-12 w-12 rounded-full md:h-[60px] md:w-[60px]"
+              className="rounded-full"
             />
             <div className="text-sm font-medium leading-tight text-white md:text-base">{gameContext.pitcher_name}</div>
           </div>
@@ -131,7 +131,7 @@ export default function MatchupCard({ params }: { params: { game_id: string } })
             <img
               src={getPlayerHeadshotUrl(gameContext.batter_id, 60)}
               alt={gameContext.batter_name}
-              className="h-12 w-12 rounded-full md:h-[60px] md:w-[60px]"
+              className="rounded-full"
             />
             <div className="text-sm font-medium leading-tight text-white md:text-base">{gameContext.batter_name}</div>
           </div>
@@ -197,7 +197,7 @@ export default function MatchupCard({ params }: { params: { game_id: string } })
               <img
                 src={getPlayerHeadshotUrl(gameContext.pitcher_id, 128)}
                 alt={gameContext.pitcher_name}
-                className="h-16 w-16 rounded-full"
+                className="w-16 rounded-full"
               />
               <span className="text-sm font-medium leading-tight text-white">{gameContext.pitcher_name}</span>
             </div>
@@ -207,7 +207,7 @@ export default function MatchupCard({ params }: { params: { game_id: string } })
               <img
                 src={getPlayerHeadshotUrl(gameContext.batter_id, 128)}
                 alt={gameContext.batter_name}
-                className="h-16 w-16 rounded-full"
+                className="w-16 rounded-full"
               />
               <span className="text-sm font-medium leading-tight text-white">{gameContext.batter_name}</span>
             </div>
