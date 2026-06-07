@@ -4,6 +4,7 @@ import { NetworkStack } from "../lib/network-stack";
 import { DataStack } from "../lib/data-stack";
 import { AppStack } from "../lib/app-stack";
 import { BuildStack } from "../lib/build-stack";
+import { PipelineStack } from "../lib/pipeline-stack";
 
 const app = new cdk.App();
 
@@ -49,6 +50,22 @@ if (domainName && hostedZoneId) {
   cdk.Annotations.of(app).addWarning(
     "domainName/hostedZoneId not set — skipping AppStack. Set them in cdk.json context.",
   );
+}
+
+// CI/CD pipeline (needs a GitHub CodeConnections ARN + repo coordinates).
+const connectionArn: string | undefined = app.node.tryGetContext("githubConnectionArn");
+const ghOwner: string | undefined = app.node.tryGetContext("githubOwner");
+const ghRepo: string | undefined = app.node.tryGetContext("githubRepo");
+const ghBranch: string = app.node.tryGetContext("githubBranch") ?? "main";
+if (domainName && connectionArn && ghOwner && ghRepo) {
+  new PipelineStack(app, "MoneyBallPipeline", {
+    env,
+    domainName,
+    connectionArn,
+    owner: ghOwner,
+    repo: ghRepo,
+    branch: ghBranch,
+  });
 }
 
 app.synth();
