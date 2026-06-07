@@ -93,10 +93,12 @@ export class PipelineStack extends cdk.Stack {
       buildSpec: codebuild.BuildSpec.fromObject({
         version: "0.2",
         phases: {
-          install: { commands: ["cd infra && npm ci"] },
+          // Use an absolute path: CodeBuild persists cwd across commands, so a
+          // bare `cd infra` in two commands would try infra/infra the 2nd time.
+          install: { commands: ['cd "$CODEBUILD_SRC_DIR/infra" && npm ci'] },
           build: {
             // Roll the App stack to the freshly built image tag.
-            commands: ["cd infra && npx cdk deploy MoneyBallApp -c imageTag=$IMAGE_TAG --require-approval never"],
+            commands: ['cd "$CODEBUILD_SRC_DIR/infra" && npx cdk deploy MoneyBallApp -c imageTag=$IMAGE_TAG --require-approval never'],
           },
           post_build: {
             // Apply DB migrations via the one-off task (now on the new image).
