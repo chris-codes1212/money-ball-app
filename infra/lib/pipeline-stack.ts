@@ -58,7 +58,8 @@ export class PipelineStack extends cdk.Stack {
         phases: {
           pre_build: {
             commands: [
-              "export IMAGE_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION:0:12}",
+              // POSIX sh (dash) — no bash substring expansion, so use cut.
+              'export IMAGE_TAG=$(echo "$CODEBUILD_RESOLVED_SOURCE_VERSION" | cut -c1-12)',
               "echo Building tag $IMAGE_TAG",
               "aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $REGISTRY",
             ],
