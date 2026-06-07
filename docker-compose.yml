@@ -52,7 +52,18 @@ services:
   # this to succeed. (In ECS this becomes a one-off task before the service.)
   migrate:
     image: money-ball-frontend:local
-    command: ["pnpm", "prisma", "migrate", "deploy"]
+    # Retry: the DB healthcheck can pass a moment before connections settle, and
+    # corepack may be fetching pnpm on first run — so don't fail on a transient.
+    command:
+      - sh
+      - -lc
+      - |
+        for i in 1 2 3 4 5 6; do
+          pnpm prisma migrate deploy && exit 0
+          echo "migrate attempt $i failed; retrying in 3s..."
+          sleep 3
+        done
+        exit 1
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/appdb
     depends_on:

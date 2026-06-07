@@ -1,6 +1,6 @@
 import LocalTime from "@/components/LocalTime";
 import { TEAM_LOGO_PATHS } from "@/src/lib/mlb-team-logos";
-import Link from "next/link";
+import GameTile from "@/components/GameTile";
 
 type Game = {
   game_id: number;
@@ -101,13 +101,13 @@ export default async function LiveGamesPage() {
     <main className="w-full">
       <div className="flex w-full flex-col items-center gap-6">
         {games.map((game) => (
-          <Link
+          // GameTile decides clickable vs. greyed based on the betting window.
+          <GameTile
             key={game.game_id}
-            href={`/games/${game.game_id}`}
-            className="flex w-full justify-center"
+            game={{ game_id: game.game_id, status: game.status, start_time: game.start_time }}
           >
             <GameCard game={game} />
-          </Link>
+          </GameTile>
         ))}
       </div>
     </main>

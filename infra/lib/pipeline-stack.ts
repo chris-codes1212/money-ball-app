@@ -93,24 +93,25 @@ export class PipelineStack extends cdk.Stack {
       buildSpec: codebuild.BuildSpec.fromObject({
         version: "0.2",
         phases: {
-          install: { commands: ["cd infra", "npm ci"] },
+          install: { commands: ["cd infra && npm ci"] },
           build: {
-            commands: [
-              // Roll the App stack to the freshly built image tag.
-              "npx cdk deploy MoneyBallApp -c imageTag=$IMAGE_TAG --require-approval never",
-            ],
+            // Roll the App stack to the freshly built image tag.
+            commands: ["cd infra && npx cdk deploy MoneyBallApp -c imageTag=$IMAGE_TAG --require-approval never"],
           },
           post_build: {
+            // Apply DB migrations via the one-off task (now on the new image).
+            // CodeBuild runs each list entry in a SEPARATE shell, so the whole
+            // sequence must be ONE entry to share variables.
             commands: [
-              // Apply DB migrations via the one-off task (now on the new image).
-              "cd ..",
-              "STK=MoneyBallApp",
-              "out() { aws cloudformation describe-stacks --stack-name $STK --query \"Stacks[0].Outputs[?OutputKey=='$1'].OutputValue\" --output text; }",
-              "CLUSTER=$(out ClusterName); TD=$(out MigrateTaskArn); SUBNETS=$(out ServiceSubnets); SG=$(out ServiceSecurityGroupId)",
-              'TASK=$(aws ecs run-task --cluster "$CLUSTER" --task-definition "$TD" --launch-type FARGATE --network-configuration "awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$SG],assignPublicIp=ENABLED}" --query "tasks[0].taskArn" --output text)',
-              'aws ecs wait tasks-stopped --cluster "$CLUSTER" --tasks "$TASK"',
-              'EXIT=$(aws ecs describe-tasks --cluster "$CLUSTER" --tasks "$TASK" --query "tasks[0].containers[0].exitCode" --output text)',
-              'echo "migration exit code: $EXIT"; test "$EXIT" = "0"',
+              `O() { aws cloudformation describe-stacks --stack-name MoneyBallApp --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text; }
+CLUSTER=$(O ClusterName); TD=$(O MigrateTaskArn); SUBNETS=$(O ServiceSubnets); SG=$(O ServiceSecurityGroupId)
+echo "cluster=$CLUSTER td=$TD"
+TASK=$(aws ecs run-task --cluster "$CLUSTER" --task-definition "$TD" --launch-type FARGATE --network-configuration "awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$SG],assignPublicIp=ENABLED}" --query "tasks[0].taskArn" --output text)
+echo "migrate task=$TASK"
+aws ecs wait tasks-stopped --cluster "$CLUSTER" --tasks "$TASK"
+EXIT=$(aws ecs describe-tasks --cluster "$CLUSTER" --tasks "$TASK" --query "tasks[0].containers[0].exitCode" --output text)
+echo "migration exit code: $EXIT"
+[ "$EXIT" = "0" ]`,
             ],
           },
         },
