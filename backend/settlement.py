@@ -85,7 +85,11 @@ def get_pitch_results(game_id: int) -> dict:
         logging.error(f"pitch_results: failed to fetch game {game_id}: {e}")
         return {"current_at_bat_index": None, "pitches": []}
 
-    current_at_bat_index = data.get("currentPlay", {}).get("atBatIndex")
+    current_play = data.get("currentPlay", {})
+    current_at_bat_index = current_play.get("atBatIndex")
+    current_count = current_play.get("count", {})
+    current_balls = current_count.get("balls")
+    current_strikes = current_count.get("strikes")
     pitches = []
 
     for play in data.get("allPlays", []):
@@ -116,6 +120,11 @@ def get_pitch_results(game_id: int) -> dict:
             balls_before = cnt.get("balls", balls_before)
             strikes_before = cnt.get("strikes", strikes_before)
 
-    result = {"current_at_bat_index": current_at_bat_index, "pitches": pitches}
+    result = {
+        "current_at_bat_index": current_at_bat_index,
+        "current_balls": current_balls,
+        "current_strikes": current_strikes,
+        "pitches": pitches,
+    }
     _results_cache[game_id] = (now + _CACHE_TTL_SECONDS, result)
     return result

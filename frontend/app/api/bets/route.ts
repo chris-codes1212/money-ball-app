@@ -8,9 +8,78 @@ import {
   toPitchOutcome,
 } from "@/lib/betting";
 import { serializeBet } from "@/lib/betSerializer";
+import { isGameBettable } from "@/lib/gameBetting";
 
 function isNonNegativeInt(v: unknown): v is number {
   return typeof v === "number" && Number.isInteger(v) && v >= 0;
+}
+
+// Server-authoritative placement guard. Verifies against the backend (NOT the
+// possibly-laggy browser) that (1) the game is open for betting, and (2) the bet
+// is on the CURRENT pitch — never one whose outcome already happened. Returns an
+// error Response to reject, or null to allow.
+async function checkPlaceable(
+  gameId: number,
+  atBatIndex: number,
+  balls: number,
+  strikes: number,
+): Promise<Response | null> {
+  const backend = process.env.FAST_API_BACKEND_URL;
+  if (!backend) {
+    return Response.json({ error: "Backend not configured" }, { status: 500 });
+  }
+
+  // (1) Game must be open for betting: live, or within 5 min of first pitch.
+  try {
+    const res = await fetch(`${backend}/live_games`, { cache: "no-store" });
+    if (!res.ok) throw new Error(`live_games ${res.status}`);
+    const data = await res.json();
+    const game = (data.live_games ?? []).find(
+      (g: { game_id?: number }) => g.game_id === gameId,
+    );
+    if (!game || !isGameBettable(game.status, game.start_time)) {
+      return Response.json(
+        { error: "Betting isn't open for this game yet." },
+        { status: 409 },
+      );
+    }
+  } catch (err) {
+    console.error("checkPlaceable: live_games failed:", err);
+    return Response.json(
+      { error: "Couldn't verify the game right now — try again." },
+      { status: 503 },
+    );
+  }
+
+  // (2) The bet must match the game's CURRENT authoritative state. If play has
+  // advanced past this pitch (even while the browser still shows it), reject —
+  // this is what prevents betting on an event that already occurred.
+  try {
+    const res = await fetch(`${backend}/games/${gameId}/pitch_results`, { cache: "no-store" });
+    if (!res.ok) throw new Error(`pitch_results ${res.status}`);
+    const pr = await res.json();
+    // null current at-bat => game hasn't produced plays yet; no past event to
+    // exploit, and the open-for-betting check above already vetted it.
+    if (
+      pr.current_at_bat_index != null &&
+      (pr.current_at_bat_index !== atBatIndex ||
+        pr.current_balls !== balls ||
+        pr.current_strikes !== strikes)
+    ) {
+      return Response.json(
+        { error: "The play has moved on — refresh and bet on the current pitch." },
+        { status: 409 },
+      );
+    }
+  } catch (err) {
+    console.error("checkPlaceable: pitch_results failed:", err);
+    return Response.json(
+      { error: "Couldn't verify the current play right now — try again." },
+      { status: 503 },
+    );
+  }
+
+  return null;
 }
 
 // POST /api/bets — place a fake bet. Debits the stake from the bankroll and
@@ -91,6 +160,10 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+
+    // --- server-authoritative guard: open for betting + on the live pitch ----
+    const rejection = await checkPlaceable(gameId, atBatIndex, balls, strikes);
+    if (rejection) return rejection;
 
     const payout = potentialPayout(stakeDec, oddsAmerican);
 

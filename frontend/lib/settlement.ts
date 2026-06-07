@@ -51,9 +51,12 @@ export function decideBet(
   );
 
   const betTime = bet.createdAt.getTime();
-  const candidate =
-    matching.find((p) => p.startTime != null && Date.parse(p.startTime) > betTime) ??
-    matching[0];
+  // Only grade against a pitch thrown strictly AFTER the bet was placed. Never
+  // fall back to an earlier pitch — that would settle a late bet against an event
+  // that already happened (letting it "win" on a known result).
+  const candidate = matching.find(
+    (p) => p.startTime != null && Date.parse(p.startTime) > betTime,
+  );
 
   // Play has moved past this at-bat — used to decide when to give up waiting.
   const atBatPassed = currentAtBatIndex != null && bet.atBatIndex < currentAtBatIndex;
