@@ -1,12 +1,13 @@
-# Local development database.
+# Full local stack: Postgres + FastAPI backend + Next.js frontend, plus a
+# one-off DB migration job and a settlement poller.
 #
-# Credentials/db name match the DATABASE_URL in frontend/.env(.local):
-#   postgresql://postgres:postgres@host.docker.internal:5432/appdb
+#   cp .env.example .env   # fill in secrets
+#   docker compose up --build
 #
-# The full application services (frontend, backend) are added in Phase 2, where
-# containerization is the focus. For now this just provides a reproducible
-# Postgres so migrations and local runs work out of the box:
-#   docker compose up -d db
+# URL wiring is the subtle part:
+#   - server-side (Next -> backend) uses the internal service DNS: http://backend:8000
+#   - browser-side (user's browser -> backend WS) uses the published port:
+#     ws://localhost:8000, baked into the bundle at build time via NEXT_PUBLIC_*
 services:
   db:
     image: postgres:16-alpine
@@ -25,6 +26,82 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: dockerfile
+    image: money-ball-backend:local
+    restart: unless-stopped
+    environment:
+      # Needed to load the production model; without it the app serves
+      # placeholder odds (see backend/main.py).
+      WANDB_API_KEY: ${WANDB_API_KEY:-}
+    ports:
+      - "8000:8000" # published so the browser can open the WebSocket
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      start_period: 60s
+      retries: 3
+
+  # One-off job: apply Prisma migrations, then exit. The web container waits for
+  # this to succeed. (In ECS this becomes a one-off task before the service.)
+  migrate:
+    image: money-ball-frontend:local
+    command: ["pnpm", "prisma", "migrate", "deploy"]
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/appdb
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: dockerfile
+      args:
+        # Baked into the browser bundle at build time.
+        NEXT_PUBLIC_BACKEND_WS_URL: ${NEXT_PUBLIC_BACKEND_WS_URL:-ws://localhost:8000}
+    image: money-ball-frontend:local
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/appdb
+      FAST_API_BACKEND_URL: http://backend:8000 # server-side calls use internal DNS
+      AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET in .env}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?set NEXTAUTH_SECRET in .env}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      SETTLE_SECRET: ${SETTLE_SECRET:?set SETTLE_SECRET in .env}
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      backend:
+        condition: service_started
+
+  # Settlement backstop: periodically asks the app to settle all pending bets.
+  # (In production this is an EventBridge schedule hitting /api/settle.)
+  settler:
+    image: curlimages/curl:8.11.1
+    restart: unless-stopped
+    environment:
+      SETTLE_SECRET: ${SETTLE_SECRET:?set SETTLE_SECRET in .env}
+    depends_on:
+      frontend:
+        condition: service_started
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          curl -s -X POST http://frontend:3000/api/settle \
+            -H "x-settle-secret: $$SETTLE_SECRET" >/dev/null 2>&1 || true
+          sleep 10
+        done
 
 volumes:
   moneyball-pgdata:

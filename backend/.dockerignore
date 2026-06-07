@@ -1,0 +1,21 @@
+# Keep the build context small and avoid leaking local files into the image.
+.venv
+.venv*
+venv
+__pycache__
+**/__pycache__
+*.py[cod]
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+# W&B model artifacts are downloaded at runtime, not baked in
+artifacts
+wandb
+# Notebooks / local scratch
+*.ipynb
+.DS_Store
+**/.DS_Store
+Dockerfile
+.dockerignore

@@ -64,7 +64,10 @@ export default function MatchupCard({ params }: { params: { game_id: string } })
   const { locked, refresh } = useGameBets();
 
   useEffect(() => {
-    const ws = new WebSocket(`ws://localhost:8000/ws/${params.game_id}`);
+    // Browser-facing backend WS URL. Configurable per environment (compose maps
+    // to the published localhost:8000; prod points at wss://<api-domain>).
+    const wsBase = process.env.NEXT_PUBLIC_BACKEND_WS_URL ?? "ws://localhost:8000";
+    const ws = new WebSocket(`${wsBase}/ws/${params.game_id}`);
 
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data) as GameData;

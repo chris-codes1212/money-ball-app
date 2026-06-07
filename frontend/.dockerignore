@@ -1,0 +1,17 @@
+# Keep the build context small and avoid leaking local files into the image.
+node_modules
+.next
+out
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+npm-debug.log*
+.DS_Store
+**/.DS_Store
+# Prisma client is regenerated during the build
+lib/generated
+README.md
+Dockerfile
+.dockerignore

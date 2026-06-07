@@ -1,14 +1,15 @@
-openai
-dotenv
+# Runtime dependencies for the FastAPI serving image. This is the minimal set
+# verified to load the production model and run the server. Training-only deps
+# (pybaseball, etc.) live in src/requirements.txt.
 fastapi
-datetime
+uvicorn[standard]
 apscheduler
 MLB-StatsAPI==1.9.0
+python-dotenv
 wandb
 joblib
 pandas
-numpy==2.4.2
-pybaseball==2.2.7
+numpy==2.4.6
 scikit-learn==1.6.1
 scipy==1.17.1
 xgboost==3.2.0

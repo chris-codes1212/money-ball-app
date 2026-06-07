@@ -81,6 +81,14 @@ async def on_new_pitch(game_id: int, data):
 
     await manager.broadcast(game_id=game_id, payload=payload)
 
+@app.get("/health")
+def health():
+    # Lightweight liveness/readiness probe for containers/load balancers.
+    # Reports whether the ML model loaded (the app still serves placeholder odds
+    # if not, so this stays 200 either way).
+    return {"status": "ok", "model_loaded": model is not None}
+
+
 @app.get("/")
 async def get():
     return HTMLResponse(html)
