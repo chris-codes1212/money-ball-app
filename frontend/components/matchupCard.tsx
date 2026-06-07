@@ -103,7 +103,9 @@ export default function MatchupCard({ params }: { params: { game_id: string } })
   return (
     <div className="rounded-2xl border border-white/10 bg-slate-800/90 px-4 py-5 shadow-lg md:px-8 md:py-6">
       {gameContext ? (
-        <div className="grid grid-cols-3 items-start justify-items-center gap-x-2 gap-y-3 md:gap-x-6 md:gap-y-4">
+        <>
+        {/* Desktop / tablet (md+): the original 3-column grid, unchanged. */}
+        <div className="hidden grid-cols-3 items-start justify-items-center gap-x-6 gap-y-4 md:grid">
           {/* Header */}
           <div className="text-xs font-semibold uppercase tracking-wide text-white/70 md:text-sm">
             Pitcher
@@ -184,6 +186,76 @@ export default function MatchupCard({ params }: { params: { game_id: string } })
           </div>
           <div />
         </div>
+
+        {/* Mobile (phones): purpose-built layout — roomy photos and a compact
+            Pitcher | stat | Batter rates table instead of cramped wrapping pills. */}
+        <div className="space-y-4 md:hidden">
+          {/* Players */}
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex flex-1 flex-col items-center gap-1 text-center">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-white/50">Pitcher</span>
+              <img
+                src={getPlayerHeadshotUrl(gameContext.pitcher_id, 128)}
+                alt={gameContext.pitcher_name}
+                className="h-16 w-16 rounded-full"
+              />
+              <span className="text-sm font-medium leading-tight text-white">{gameContext.pitcher_name}</span>
+            </div>
+            <span className="self-center text-sm font-bold text-white/50">vs</span>
+            <div className="flex flex-1 flex-col items-center gap-1 text-center">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-white/50">Batter</span>
+              <img
+                src={getPlayerHeadshotUrl(gameContext.batter_id, 128)}
+                alt={gameContext.batter_name}
+                className="h-16 w-16 rounded-full"
+              />
+              <span className="text-sm font-medium leading-tight text-white">{gameContext.batter_name}</span>
+            </div>
+          </div>
+
+          {/* Bases + count/outs */}
+          <div className="flex items-center justify-center gap-4">
+            <div className="[&_svg]:h-[120px] [&_svg]:w-[120px]">
+              <BaseOccupancy
+                first={baseOccupancy?.first ?? false}
+                second={baseOccupancy?.second ?? false}
+                third={baseOccupancy?.third ?? false}
+                size={120}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white">
+                Count: {gameContext.balls}-{gameContext.strikes}
+              </span>
+              <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white">
+                Outs: {gameContext.outs}
+              </span>
+            </div>
+          </div>
+
+          {/* Rates: compact comparison table (no wrapping). */}
+          <div className="rounded-xl bg-white/5 px-3 py-2">
+            <div className="grid grid-cols-3 text-center text-[10px] font-semibold uppercase tracking-wide text-white/40">
+              <span>Pitcher</span>
+              <span />
+              <span>Batter</span>
+            </div>
+            {(
+              [
+                ["Strike", "strike_rate"],
+                ["Ball", "ball_rate"],
+                ["Hit", "hit_rate"],
+              ] as const
+            ).map(([label, key]) => (
+              <div key={key} className="grid grid-cols-3 items-center text-center text-sm">
+                <span className="font-semibold text-white">{playerStats?.pitcher[key] ?? 0}%</span>
+                <span className="text-xs text-white/50">{label}</span>
+                <span className="font-semibold text-white">{playerStats?.batter[key] ?? 0}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        </>
       ) : (
         <div className="py-8 text-center text-white/70">Loading matchup...</div>
       )}
