@@ -5,6 +5,7 @@ import { DataStack } from "../lib/data-stack";
 import { AppStack } from "../lib/app-stack";
 import { BuildStack } from "../lib/build-stack";
 import { PipelineStack } from "../lib/pipeline-stack";
+import { BastionStack } from "../lib/bastion-stack";
 
 const app = new cdk.App();
 
@@ -20,6 +21,9 @@ const domainName: string | undefined = app.node.tryGetContext("domainName");
 const hostedZoneId: string | undefined = app.node.tryGetContext("hostedZoneId");
 // Image tag the App services pull from ECR (CodeBuild pushes this tag).
 const imageTag: string = app.node.tryGetContext("imageTag") ?? "latest";
+
+//// IP address allowed to SSH into the bastion host
+const allowedIp: string | undefined = app.node.tryGetContext("allowedIp");
 
 const network = new NetworkStack(app, "MoneyBallNetwork", { env });
 
@@ -49,6 +53,20 @@ if (domainName && hostedZoneId) {
 } else {
   cdk.Annotations.of(app).addWarning(
     "domainName/hostedZoneId not set — skipping AppStack. Set them in cdk.json context.",
+  );
+}
+
+if (allowedIp) {
+  new BastionStack(app, "MoneyBallBastion", {
+    env,
+    vpc: network.vpc,
+    dbSecurityGroup: network.dbSecurityGroup,
+    allowedIp,
+    rdsEndpoint: data.instance.dbInstanceEndpointAddress,
+  });
+} else {
+  cdk.Annotations.of(app).addWarning(
+    "allowedIp not set — skipping BastionStack. Set it with -c allowedIp=<your-ip>.",
   );
 }
 

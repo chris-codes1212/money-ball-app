@@ -8,6 +8,7 @@
     "//": "Domain + Route 53 hosted zone for ACM/DNS (override with -c if needed).",
     "domainName": "mlb-money-ball.app",
     "hostedZoneId": "Z0598777ZYL6K7YQ3JLS",
+    "bastionAllowedIp": "68.58.132.255",
     "githubOwner": "chris-codes1212",
     "githubRepo": "money-ball-app",
     "githubBranch": "main",
