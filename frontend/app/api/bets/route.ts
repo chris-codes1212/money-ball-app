@@ -71,6 +71,25 @@ async function checkPlaceable(
         { status: 409 },
       );
     }
+
+    // (3) `currentPlay` (checked above) can lag the actual pitch-by-pitch feed:
+    // a 2-strike foul doesn't change the count, so current_at_bat_index/
+    // current_balls/current_strikes can still match this bet's count even
+    // though a pitch has ALREADY been thrown and graded from that exact count.
+    // settlement.ts grades against this same `pitches` list with a matching[0]
+    // fallback, so if a graded pitch at this (atBatIndex, balls, strikes)
+    // already exists, this bet would resolve instantly against a known
+    // outcome. Reject it outright.
+    type GradedPitch = { atBatIndex: number; balls: number; strikes: number; outcome: string | null };
+    const alreadyGraded = ((pr.pitches ?? []) as GradedPitch[]).some(
+      (p) => p.atBatIndex === atBatIndex && p.balls === balls && p.strikes === strikes && p.outcome != null,
+    );
+    if (alreadyGraded) {
+      return Response.json(
+        { error: "The play has moved on — refresh and bet on the current pitch." },
+        { status: 409 },
+      );
+    }
   } catch (err) {
     console.error("checkPlaceable: pitch_results failed:", err);
     return Response.json(
