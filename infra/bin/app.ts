@@ -22,8 +22,14 @@ const hostedZoneId: string | undefined = app.node.tryGetContext("hostedZoneId");
 // Image tag the App services pull from ECR (CodeBuild pushes this tag).
 const imageTag: string = app.node.tryGetContext("imageTag") ?? "latest";
 
-//// IP address allowed to SSH into the bastion host
-const allowedIp: string | undefined = app.node.tryGetContext("allowedIp");
+// IP address allowed to SSH into the bastion host. Falls back to the
+// committed `bastionAllowedIp` in cdk.json so every `cdk deploy` — including
+// the pipeline's, which doesn't pass -c flags — synthesizes BastionStack the
+// same way. Without this, MoneyBallData's cross-stack export consumed by
+// BastionStack would appear in some synths and not others, and CloudFormation
+// refuses to drop an export that's still imported by another stack.
+const allowedIp: string | undefined =
+  app.node.tryGetContext("allowedIp") ?? app.node.tryGetContext("bastionAllowedIp");
 
 const network = new NetworkStack(app, "MoneyBallNetwork", { env });
 
